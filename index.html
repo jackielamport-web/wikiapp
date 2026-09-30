@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Drift">
+<meta name="theme-color" content="#3A6EA5">
+<title>Drift</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --face:#C0C0C0; --hi:#FFFFFF; --lite:#DFDFDF; --shade:#808080; --dark:#0A0A0A;
+  --navy:#000080; --navy2:#1084D0; --ink:#000;
+  --ui:"Pixelify Sans","MS Sans Serif",Tahoma,Geneva,Verdana,sans-serif;
+  --text:Tahoma,Verdana,Geneva,"Segoe UI",sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+body{
+  font-family:var(--text);font-size:14px;color:var(--ink);
+  display:flex;flex-direction:column;overflow:hidden;-webkit-tap-highlight-color:transparent;
+  /* sky + rolling green hill */
+  background:
+    radial-gradient(140% 55% at 30% 100%, #5DA130 0 45%, #3E8A1E 60%, transparent 61%),
+    radial-gradient(120% 50% at 90% 105%, #6BB43A 0 50%, transparent 51%),
+    radial-gradient(60% 18% at 20% 30%, rgba(255,255,255,.75), transparent 70%),
+    radial-gradient(50% 14% at 80% 18%, rgba(255,255,255,.6), transparent 70%),
+    linear-gradient(#2E62C7 0%, #5B8FE0 45%, #A9C9F2 70%, #D8E8F8 78%);
+  background-color:#3A6EA5;
+}
+.raised{box-shadow:inset -1px -1px var(--dark),inset 1px 1px var(--hi),inset -2px -2px var(--shade),inset 2px 2px var(--lite)}
+.sunken{box-shadow:inset -1px -1px var(--hi),inset 1px 1px var(--shade),inset -2px -2px var(--lite),inset 2px 2px var(--dark)}
+
+/* ---------- window ---------- */
+.desk{flex:1;min-height:0;display:flex;padding:12px 10px 10px;position:relative}
+.win{flex:1;min-height:0;background:var(--face);padding:3px;display:flex;flex-direction:column;
+  touch-action:pan-y;will-change:transform;position:relative}
+.title{display:flex;align-items:center;gap:6px;padding:3px 3px 3px 6px;color:#fff;
+  background:linear-gradient(90deg,var(--navy),var(--navy2));font-family:var(--ui);font-weight:600;font-size:15px}
+.title .t{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tbtn{width:20px;height:18px;background:var(--face);border:0;padding:0;font:600 12px/1 var(--ui);color:#000;
+  display:grid;place-items:center;cursor:pointer}
+.tbtn:active{box-shadow:inset -1px -1px var(--hi),inset 1px 1px var(--dark),inset -2px -2px var(--lite),inset 2px 2px var(--shade)}
+
+.tabs{display:flex;padding:8px 6px 0;gap:0;font-family:var(--ui);position:relative;z-index:1}
+.tab{background:var(--face);border:0;font:15px var(--ui);padding:5px 14px 4px;cursor:pointer;margin-right:-2px;
+  box-shadow:inset 1px 1px var(--hi),inset -1px 0 var(--dark),inset 2px 2px var(--lite),inset -2px 0 var(--shade);
+  position:relative;top:2px}
+.tab[aria-selected="true"]{top:0;padding-bottom:7px;z-index:2}
+.panel{flex:1;min-height:0;margin:0 6px;padding:10px;display:flex;flex-direction:column;gap:10px;
+  box-shadow:inset -1px -1px var(--dark),inset 1px 1px var(--hi),inset -2px -2px var(--shade),inset 2px 2px var(--lite)}
+.panel[hidden]{display:none}
+
+.head{display:flex;gap:10px;align-items:flex-start}
+.thumb{width:84px;height:84px;flex:none;padding:2px;background:#fff}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.head h1{font:600 clamp(20px,6vw,26px)/1.1 var(--ui);margin:2px 0 4px;word-break:break-word}
+.head p{margin:0;color:#333;font-size:13px}
+.doc{flex:1;min-height:0;background:#fff;padding:12px 12px;overflow-y:auto;line-height:1.55;font-size:15px}
+.doc p{margin:0;max-width:62ch}
+
+/* win98 scrollbars */
+.doc::-webkit-scrollbar,.list::-webkit-scrollbar{width:16px}
+.doc::-webkit-scrollbar-track,.list::-webkit-scrollbar-track{background:repeating-conic-gradient(var(--face) 0 25%,#fff 0 50%) 0 0/2px 2px}
+.doc::-webkit-scrollbar-thumb,.list::-webkit-scrollbar-thumb{background:var(--face);
+  box-shadow:inset -1px -1px var(--dark),inset 1px 1px var(--hi),inset -2px -2px var(--shade),inset 2px 2px var(--lite)}
+
+.btns{display:grid;grid-template-columns:1fr auto 1fr;gap:8px}
+.btn{background:var(--face);border:0;font:16px var(--ui);color:#000;padding:12px 10px;min-height:46px;cursor:pointer;
+  text-decoration:none;display:grid;place-items:center;
+  box-shadow:inset -1px -1px var(--dark),inset 1px 1px var(--hi),inset -2px -2px var(--shade),inset 2px 2px var(--lite)}
+.btn:active,.btn.down{box-shadow:inset -1px -1px var(--hi),inset 1px 1px var(--dark),inset -2px -2px var(--lite),inset 2px 2px var(--shade);padding:13px 9px 11px 11px}
+.btn:focus-visible{outline:1px dotted #000;outline-offset:-5px}
+.btn.primary{box-shadow:inset 0 0 0 1px var(--dark),inset -2px -2px var(--dark),inset 2px 2px var(--hi),inset -3px -3px var(--shade),inset 3px 3px var(--lite)}
+
+.status{display:grid;grid-template-columns:1fr auto;gap:3px;margin:6px 6px 3px;font-size:13px}
+.status span{padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.list{flex:1;min-height:0;background:#fff;overflow-y:auto;margin:0;padding:4px 0;list-style:none}
+.list li{padding:6px 10px}
+.list li:nth-child(odd){background:#F2F2F2}
+.list a{color:var(--navy);font-weight:600}
+.list small{display:block;color:#444}
+.empty{padding:14px;color:#444}
+
+.win.leave-yes{transform:translateX(115%) rotate(4deg);transition:.25s ease-in}
+.win.leave-no{transform:translateX(-115%) rotate(-4deg);transition:.25s ease-in}
+.win.enter{animation:pop .18s steps(3)}
+@keyframes pop{from{transform:scale(.92);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.win.enter{animation:none}.win.leave-yes,.win.leave-no{transition:none}}
+
+/* ---------- system message ---------- */
+.overlay{position:fixed;inset:0;display:grid;place-items:center;padding:20px;z-index:20}
+.overlay[hidden]{display:none}
+.msg{width:min(92vw,360px);background:var(--face);padding:3px}
+.msg .body{padding:22px 16px 18px;text-align:center;font:17px var(--ui)}
+.msg .row{display:flex;justify-content:center;gap:10px;padding:0 12px 14px}
+.msg .btn{min-width:110px}
+
+/* ---------- taskbar ---------- */
+.taskbar{display:flex;align-items:center;gap:6px;background:var(--face);padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px));
+  box-shadow:inset 0 1px var(--lite),inset 0 2px var(--hi)}
+.start{font:600 16px var(--ui);display:flex;align-items:center;gap:6px;padding:4px 10px;background:var(--face);border:0}
+.flag{width:18px;height:16px;display:grid;grid-template-columns:1fr 1fr;gap:1px;transform:skewY(-6deg)}
+.flag i:nth-child(1){background:#E8412B}.flag i:nth-child(2){background:#3BA935}
+.flag i:nth-child(3){background:#2B6BE8}.flag i:nth-child(4){background:#F5C400}
+.task{flex:1;min-width:0;font:15px var(--ui);padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clock{font:14px var(--ui);padding:5px 10px}
+</style>
+</head>
+<body>
+
+<div class="desk">
+  <section class="win raised" id="win" aria-live="polite">
+    <div class="title">
+      <span class="t" id="winTitle">Random Article - Wikipedia</span>
+      <button class="tbtn raised" id="help" aria-label="Help">?</button>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" id="tabArticle">Article</button>
+      <button class="tab" role="tab" aria-selected="false" id="tabLiked">Liked</button>
+    </div>
+
+    <div class="panel" id="pArticle">
+      <div class="head" id="head"></div>
+      <div class="doc sunken" id="doc"><p>Loading article…</p></div>
+      <div class="btns">
+        <button class="btn" id="no">Not for me</button>
+        <a class="btn" id="read" target="_blank" rel="noopener">Read</a>
+        <button class="btn primary" id="yes">Like</button>
+      </div>
+    </div>
+
+    <div class="panel" id="pLiked" hidden>
+      <ul class="list sunken" id="likedList"></ul>
+      <div class="btns" style="grid-template-columns:1fr">
+        <button class="btn" id="reset">Reset learning…</button>
+      </div>
+    </div>
+
+    <div class="status">
+      <span class="sunken" id="mode">Starting up</span>
+      <span class="sunken" id="count">0 liked</span>
+    </div>
+  </section>
+</div>
+
+<div class="taskbar">
+  <div class="start raised"><span class="flag"><i></i><i></i><i></i><i></i></span>Start</div>
+  <div class="task sunken" id="taskName">Drift</div>
+  <div class="clock sunken" id="clock"></div>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="msg raised" role="alertdialog" aria-labelledby="msgTitle" aria-describedby="msgBody">
+    <div class="title"><span class="t" id="msgTitle">System message</span>
+      <button class="tbtn raised" id="msgX" aria-label="Close">✕</button></div>
+    <div class="body" id="msgBody"></div>
+    <div class="row" id="msgRow"></div>
+  </div>
+</div>
+
+<script>
+/* ---------- Tuning: how much your taste matters ---------- */
+const PURE_RANDOM_CHANCE = 0.75; // 3 in 4 articles ignore your taste entirely
+const CANDIDATES = 3;            // otherwise, pick among this many random articles
+const NUDGE = 0.5;               // softness of the pick (low = barely any preference)
+
+const API = "https://en.wikipedia.org/api/rest_v1/page/random/summary";
+const STOP = new Set("the a an of and or in on at to for from by with as is was were be been are it its this that which who whom his her their they he she also into than then there these those not but after before during over under between about such other more most first one two three new known american british english list".split(" "));
+
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d }catch{ return d } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)) }catch{} }
+};
+let weights = store.get("drift.weights",{});
+let liked = store.get("drift.liked",[]);
+let counts = store.get("drift.counts",{yes:0,no:0});
+let queue = [], current = null, busy = false;
+
+const $ = id => document.getElementById(id);
+const tokens = a => [...new Set(((a.title||"")+" "+(a.description||"")).toLowerCase()
+  .replace(/[^a-z0-9\u00c0-\u024f ]/g," ").split(/\s+/).filter(w=>w.length>2 && !STOP.has(w) && !/^\d+$/.test(w)))];
+const score = a => { const t=tokens(a); return t.length ? t.reduce((s,w)=>s+(weights[w]||0),0)/Math.sqrt(t.length) : 0; };
+
+async function fetchOne(){
+  for(let i=0;i<4;i++){
+    const r = await fetch(API,{headers:{accept:"application/json"}});
+    if(!r.ok) continue;
+    const a = await r.json();
+    if(a.type==="standard" && a.extract) return a;
+  }
+  throw new Error("fetch");
+}
+async function pick(){
+  if(Math.random() < PURE_RANDOM_CHANCE) return {a: await fetchOne(), nudged:false};
+  const c = (await Promise.allSettled(Array.from({length:CANDIDATES},fetchOne)))
+    .filter(r=>r.status==="fulfilled").map(r=>r.value);
+  if(!c.length) throw new Error("fetch");
+  const w = c.map(a=>Math.exp(NUDGE*Math.max(-3,Math.min(3,score(a)))));
+  let r = Math.random()*w.reduce((x,y)=>x+y,0);
+  for(let i=0;i<c.length;i++){ if((r-=w[i])<=0) return {a:c[i], nudged:true} }
+  return {a:c[0], nudged:true};
+}
+function refill(){ while(queue.length<2) queue.push(pick().catch(e=>{throw e})); }
+
+async function next(){
+  refill();
+  const p = queue.shift(); refill();
+  try{ current = await p; render(current); }
+  catch{
+    current=null;
+    systemMessage("Can't reach Wikipedia.\nCheck your connection and try again.",[["Retry",()=>{queue=[];next();}]]);
+  }
+}
+
+function render({a,nudged}){
+  const url = a.content_urls?.mobile?.page || a.content_urls?.desktop?.page || "#";
+  const head = $("head"); head.innerHTML="";
+  if(a.thumbnail?.source){
+    const f=document.createElement("div"); f.className="thumb sunken";
+    const img=new Image(); img.alt=""; img.src=a.thumbnail.source; f.append(img); head.append(f);
+  }
+  const box=document.createElement("div");
+  const h=document.createElement("h1"); h.textContent=a.title;
+  const d=document.createElement("p"); d.textContent=a.description||"";
+  box.append(h,d); head.append(box);
+  $("doc").innerHTML=""; const e=document.createElement("p"); e.textContent=a.extract; $("doc").append(e); $("doc").scrollTop=0;
+  $("read").href=url;
+  $("winTitle").textContent = a.title+" - Wikipedia";
+  $("taskName").textContent = a.title;
+  $("mode").textContent = nudged ? "Nudged by your likes" : "Pure random";
+  const w=$("win"); w.classList.remove("enter"); void w.offsetWidth; w.classList.add("enter");
+}
+
+function vote(yes){
+  if(busy || !$("overlay").hidden) return;
+  if(!current){ next(); return; }
+  busy=true;
+  const a=current.a, delta=yes?1:-1;
+  for(const w of tokens(a)) weights[w]=Math.max(-5,Math.min(5,(weights[w]||0)+delta));
+  for(const k in weights){ weights[k]*=0.995; if(Math.abs(weights[k])<0.05) delete weights[k]; }
+  counts[yes?"yes":"no"]++;
+  if(yes && !liked.some(l=>l.title===a.title))
+    liked.unshift({title:a.title, desc:a.description||"", url:a.content_urls?.mobile?.page||""});
+  store.set("drift.weights",weights); store.set("drift.liked",liked.slice(0,500)); store.set("drift.counts",counts);
+  updateCount();
+  const w=$("win"); w.style.transform=""; w.classList.add(yes?"leave-yes":"leave-no");
+  setTimeout(()=>{ w.style.transition="none"; w.classList.remove("leave-yes","leave-no");
+    void w.offsetWidth; w.style.transition=""; busy=false; next(); },250);
+}
+
+function updateCount(){ $("count").textContent = `${counts.yes} liked`; $("tabLiked").textContent = `Liked (${liked.length})`; }
+
+function showTab(which){
+  const art = which==="article";
+  $("tabArticle").setAttribute("aria-selected",art); $("tabLiked").setAttribute("aria-selected",!art);
+  $("pArticle").hidden=!art; $("pLiked").hidden=art;
+  if(!art){
+    const ul=$("likedList"); ul.innerHTML="";
+    if(!liked.length){ ul.innerHTML='<li class="empty">Articles you like show up here.</li>'; }
+    for(const l of liked){ const li=document.createElement("li"); const a=document.createElement("a");
+      a.href=l.url; a.target="_blank"; a.rel="noopener"; a.textContent=l.title;
+      const s=document.createElement("small"); s.textContent=l.desc; li.append(a,s); ul.append(li); }
+  }
+}
+
+function systemMessage(text, buttons){
+  $("msgBody").textContent=""; text.split("\n").forEach((t,i)=>{ if(i) $("msgBody").append(document.createElement("br")); $("msgBody").append(t); });
+  const row=$("msgRow"); row.innerHTML="";
+  const close=()=>{ $("overlay").hidden=true; };
+  for(const [label,fn] of buttons){ const b=document.createElement("button"); b.className="btn"; b.textContent=label;
+    b.onclick=()=>{ close(); fn&&fn(); }; row.append(b); }
+  $("msgX").onclick=close;
+  $("overlay").hidden=false; row.querySelector("button")?.focus();
+}
+
+/* swipe the whole window */
+(function(){
+  const w=$("win"); let x0=null,y0=0,dx=0;
+  w.addEventListener("pointerdown",e=>{ if(e.target.closest("a,button,.list") || $("pArticle").hidden) return; x0=e.clientX; y0=e.clientY; dx=0; });
+  w.addEventListener("pointermove",e=>{ if(x0===null) return; dx=e.clientX-x0;
+    if(Math.abs(dx)>Math.abs(e.clientY-y0)){
+      w.style.transform=`translateX(${dx}px) rotate(${dx/40}deg)`;
+      $("yes").classList.toggle("down",dx>60); $("no").classList.toggle("down",dx<-60);
+    }});
+  const end=()=>{ if(x0===null) return; x0=null; $("yes").classList.remove("down"); $("no").classList.remove("down");
+    if(Math.abs(dx)>90) vote(dx>0); else w.style.transform=""; };
+  w.addEventListener("pointerup",end); w.addEventListener("pointercancel",end);
+})();
+
+$("yes").onclick=()=>vote(true);
+$("no").onclick=()=>vote(false);
+$("tabArticle").onclick=()=>showTab("article");
+$("tabLiked").onclick=()=>showTab("liked");
+$("help").onclick=()=>systemMessage("Swipe right or tap Like to see a bit more like this.\nMost articles stay completely random.",[["Ok"]]);
+$("reset").onclick=()=>systemMessage("Forget all your likes and\ngo back to fully random?",[["Ok",()=>{
+  weights={}; liked=[]; counts={yes:0,no:0};
+  store.set("drift.weights",weights); store.set("drift.liked",liked); store.set("drift.counts",counts);
+  updateCount(); showTab("liked");
+}],["Cancel"]]);
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape") $("overlay").hidden=true;
+  if(e.key==="ArrowRight") vote(true); if(e.key==="ArrowLeft") vote(false);
+});
+
+function tick(){ $("clock").textContent=new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}); }
+tick(); setInterval(tick,30000);
+updateCount(); next();
+</script>
+</body>
+</html>
