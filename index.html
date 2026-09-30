@@ -95,6 +95,16 @@ body{
 @keyframes pop{from{transform:scale(.92);opacity:.4}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.win.enter{animation:none}.win.leave-yes,.win.leave-no{transition:none}}
 
+/* ---------- themes ---------- */
+.group{margin:0;padding:10px 12px 8px;border:2px groove var(--hi)}
+.group legend{font:15px var(--ui);padding:0 4px}
+.check{display:flex;align-items:center;gap:12px;padding:11px 2px;font:17px var(--ui);cursor:pointer}
+.check input{appearance:none;-webkit-appearance:none;width:20px;height:20px;margin:0;flex:none;background:#fff;display:grid;place-items:center;cursor:pointer;
+  box-shadow:inset -1px -1px var(--hi),inset 1px 1px var(--shade),inset -2px -2px var(--lite),inset 2px 2px var(--dark)}
+.check input:checked::after{content:"";width:10px;height:5px;border-left:3px solid #000;border-bottom:3px solid #000;transform:translateY(-2px) rotate(-45deg)}
+.check input:focus-visible{outline:1px dotted #000;outline-offset:3px}
+.hint{margin:0;font-size:13px;color:#222}
+
 /* ---------- system message ---------- */
 .overlay{position:fixed;inset:0;display:grid;place-items:center;padding:20px;z-index:20}
 .overlay[hidden]{display:none}
@@ -125,6 +135,7 @@ body{
 
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true" id="tabArticle">Article</button>
+      <button class="tab" role="tab" aria-selected="false" id="tabThemes">Themes</button>
       <button class="tab" role="tab" aria-selected="false" id="tabLiked">Liked</button>
     </div>
 
@@ -136,6 +147,14 @@ body{
         <a class="btn" id="read" target="_blank" rel="noopener">Read</a>
         <button class="btn primary" id="yes">Like</button>
       </div>
+    </div>
+
+    <div class="panel" id="pThemes" hidden>
+      <fieldset class="group">
+        <legend>Show me articles about</legend>
+        <div id="themeList"></div>
+      </fieldset>
+      <p class="hint">Tick as many as you like. Leave them all unticked to get anything on Wikipedia.</p>
     </div>
 
     <div class="panel" id="pLiked" hidden>
@@ -174,6 +193,15 @@ const CANDIDATES = 3;            // otherwise, pick among this many random artic
 const NUDGE = 0.5;               // softness of the pick (low = barely any preference)
 
 const API = "https://en.wikipedia.org/api/rest_v1/page/random/summary";
+const SEARCH = "https://en.wikipedia.org/w/api.php";
+
+/* Each theme draws from a handful of Wikipedia categories. Add or swap category names freely. */
+const THEMES = {
+  philosophy: { label:"Philosophy", cats:["Philosophical concepts","Concepts in metaphysics","Concepts in epistemology","Concepts in ethics","Thought experiments","Ancient Greek philosophers","Philosophical schools and traditions","Philosophy books"] },
+  literature: { label:"Classic literature", cats:["19th-century British novels","19th-century French novels","19th-century Russian novels","19th-century American novels","18th-century British novels","Victorian novelists","Epic poems","Plays by William Shakespeare"] },
+  films:      { label:"Old films", cats:["American black-and-white films","American silent feature films","Film noir","Films directed by Alfred Hitchcock","Japanese black-and-white films","French black-and-white films","Italian black-and-white films"] },
+  people:     { label:"Interesting people", cats:["People who faked their own deaths","Impostors","Hermits","Feral children","Polymaths","Polar explorers","English eccentrics","Hoaxers"] }
+};
 const STOP = new Set("the a an of and or in on at to for from by with as is was were be been are it its this that which who whom his her their they he she also into than then there these those not but after before during over under between about such other more most first one two three new known american british english list".split(" "));
 
 const store = {
@@ -183,6 +211,7 @@ const store = {
 let weights = store.get("drift.weights",{});
 let liked = store.get("drift.liked",[]);
 let counts = store.get("drift.counts",{yes:0,no:0});
+let themes = store.get("drift.themes",[]).filter(k=>THEMES[k]);
 let queue = [], current = null, busy = false;
 
 const $ = id => document.getElementById(id);
@@ -199,15 +228,47 @@ async function fetchOne(){
   }
   throw new Error("fetch");
 }
+const any = arr => arr[Math.floor(Math.random()*arr.length)];
+
+async function fetchThemed(key, n){
+  const cats = [...THEMES[key].cats].sort(()=>Math.random()-.5);
+  for(const cat of cats.slice(0,3)){
+    const q = new URLSearchParams({
+      action:"query", format:"json", formatversion:"2", origin:"*",
+      generator:"search", gsrnamespace:"0", gsrsort:"random", gsrlimit:String(n),
+      gsrsearch:`incategory:"${cat}"`,
+      prop:"extracts|pageimages|description|info", exintro:"1", explaintext:"1", exlimit:"max",
+      piprop:"thumbnail", pithumbsize:"400", pilimit:"max", inprop:"url"
+    });
+    try{
+      const r = await fetch(SEARCH+"?"+q);
+      if(!r.ok) continue;
+      const pages = ((await r.json()).query?.pages||[]).filter(p=>p.extract);
+      if(!pages.length) continue;
+      return pages.map(p=>({
+        title:p.title, description:p.description||"", extract:p.extract,
+        thumbnail:p.thumbnail, type:"standard",
+        content_urls:{mobile:{page:(p.fullurl||"").replace("://en.wikipedia","://en.m.wikipedia")}}
+      }));
+    }catch{}
+  }
+  throw new Error("fetch");
+}
+
 async function pick(){
-  if(Math.random() < PURE_RANDOM_CHANCE) return {a: await fetchOne(), nudged:false};
-  const c = (await Promise.allSettled(Array.from({length:CANDIDATES},fetchOne)))
-    .filter(r=>r.status==="fulfilled").map(r=>r.value);
+  const key = themes.length ? any(themes) : null;
+  const label = key ? THEMES[key].label : "Anything";
+  const pure = Math.random() < PURE_RANDOM_CHANCE;
+  const n = pure ? 1 : CANDIDATES;
+  let c;
+  if(key) c = await fetchThemed(key, n);
+  else c = (await Promise.allSettled(Array.from({length:n},fetchOne))).filter(r=>r.status==="fulfilled").map(r=>r.value);
   if(!c.length) throw new Error("fetch");
+  if(pure || c.length===1) return {a:c[0], nudged:false, label};
   const w = c.map(a=>Math.exp(NUDGE*Math.max(-3,Math.min(3,score(a)))));
   let r = Math.random()*w.reduce((x,y)=>x+y,0);
-  for(let i=0;i<c.length;i++){ if((r-=w[i])<=0) return {a:c[i], nudged:true} }
-  return {a:c[0], nudged:true};
+  for(let i=0;i<c.length;i++){ if((r-=w[i])<=0) return {a:c[i], nudged:true, label} }
+  return {a:c[0], nudged:true, label};
 }
 function refill(){ while(queue.length<2) queue.push(pick().catch(e=>{throw e})); }
 
@@ -221,7 +282,7 @@ async function next(){
   }
 }
 
-function render({a,nudged}){
+function render({a,nudged,label}){
   const url = a.content_urls?.mobile?.page || a.content_urls?.desktop?.page || "#";
   const head = $("head"); head.innerHTML="";
   if(a.thumbnail?.source){
@@ -236,7 +297,7 @@ function render({a,nudged}){
   $("read").href=url;
   $("winTitle").textContent = a.title+" - Wikipedia";
   $("taskName").textContent = a.title;
-  $("mode").textContent = nudged ? "Nudged by your likes" : "Pure random";
+  $("mode").textContent = label + (nudged ? ", nudged by your likes" : ", pure random");
   const w=$("win"); w.classList.remove("enter"); void w.offsetWidth; w.classList.add("enter");
 }
 
@@ -259,11 +320,26 @@ function vote(yes){
 
 function updateCount(){ $("count").textContent = `${counts.yes} liked`; $("tabLiked").textContent = `Liked (${liked.length})`; }
 
+function renderThemes(){
+  const box=$("themeList"); box.innerHTML="";
+  for(const [k,t] of Object.entries(THEMES)){
+    const l=document.createElement("label"); l.className="check";
+    const i=document.createElement("input"); i.type="checkbox"; i.checked=themes.includes(k);
+    i.onchange=()=>{ themes = i.checked ? [...themes,k] : themes.filter(x=>x!==k);
+      store.set("drift.themes",themes); themesChanged=true; };
+    l.append(i, t.label); box.append(l);
+  }
+}
+let themesChanged=false;
+
 function showTab(which){
-  const art = which==="article";
-  $("tabArticle").setAttribute("aria-selected",art); $("tabLiked").setAttribute("aria-selected",!art);
-  $("pArticle").hidden=!art; $("pLiked").hidden=art;
-  if(!art){
+  for(const [t,p] of [["tabArticle","pArticle"],["tabThemes","pThemes"],["tabLiked","pLiked"]]){
+    const on = p==="p"+which[0].toUpperCase()+which.slice(1);
+    $(t).setAttribute("aria-selected",on); $(p).hidden=!on;
+  }
+  if(which==="themes") renderThemes();
+  if(which==="article" && themesChanged){ themesChanged=false; queue=[]; next(); }
+  if(which==="liked"){
     const ul=$("likedList"); ul.innerHTML="";
     if(!liked.length){ ul.innerHTML='<li class="empty">Articles you like show up here.</li>'; }
     for(const l of liked){ const li=document.createElement("li"); const a=document.createElement("a");
@@ -300,6 +376,7 @@ $("yes").onclick=()=>vote(true);
 $("no").onclick=()=>vote(false);
 $("tabArticle").onclick=()=>showTab("article");
 $("tabLiked").onclick=()=>showTab("liked");
+$("tabThemes").onclick=()=>showTab("themes");
 $("help").onclick=()=>systemMessage("Swipe right or tap Like to see a bit more like this.\nMost articles stay completely random.",[["Ok"]]);
 $("reset").onclick=()=>systemMessage("Forget all your likes and\ngo back to fully random?",[["Ok",()=>{
   weights={}; liked=[]; counts={yes:0,no:0};
@@ -308,6 +385,7 @@ $("reset").onclick=()=>systemMessage("Forget all your likes and\ngo back to full
 }],["Cancel"]]);
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape") $("overlay").hidden=true;
+  if($("pArticle").hidden) return;
   if(e.key==="ArrowRight") vote(true); if(e.key==="ArrowLeft") vote(false);
 });
 
